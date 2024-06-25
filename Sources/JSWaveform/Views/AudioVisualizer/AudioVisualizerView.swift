@@ -26,12 +26,12 @@ public struct AudioVisualizerView<Content: View>: View {
     ///
     /// - Returns: Intialized AudioVisualizerView
     public init(audioURL: URL,
-         configuration: AudioVisualizer.Configuration = AudioVisualizer.Configuration(style: .maskedGradient(.white)),
+         configuration: AudioVisualizer.Configuration = AudioVisualizer.Configuration(),
          priority: TaskPriority = .userInitiated,
          @ViewBuilder content: @escaping (AudioVisualizerShape) -> Content) {
         self.audioURL = audioURL
         self.configuration = configuration
-        self.audioVisualizerViewModel = AudioVisualizerViewModel(audioURL: audioURL)
+        self.audioVisualizerViewModel = AudioVisualizerViewModel(audioURL: audioURL, maxNumberOfAmplitudes: configuration.maxNumberOfAmplitudes, animationType: configuration.animationType)
         self.priority = priority
         self.content = content
     }
@@ -39,7 +39,6 @@ public struct AudioVisualizerView<Content: View>: View {
     public var body: some View {
         VStack {
             content(AudioVisualizerShape(amplitudes: audioVisualizerViewModel.amplitudes))
-
         }
         .onAppear {
             update(audioURL: audioURL)
@@ -79,7 +78,7 @@ public struct AudioVisualizerView<Content: View>: View {
 public extension AudioVisualizerView {
     init(
         audioURL: URL,
-        configuration: AudioVisualizer.Configuration = AudioVisualizer.Configuration(style: .maskedGradient(.gray)),
+        configuration: AudioVisualizer.Configuration = AudioVisualizer.Configuration(),
         priority: TaskPriority = .userInitiated
     ) where Content == AnyView {
         self.init(audioURL: audioURL, configuration: configuration, priority: priority) { shape in
