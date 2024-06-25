@@ -14,7 +14,10 @@ public struct DraggableCircle: View {
     
     @GestureState private var isDetectingLongPress = false
     @State private var completedLongPress = false
+    let containerWidth: CGFloat
     let width: CGFloat
+    let height: CGFloat
+    let color: Color
     var onDragStarted: () -> Void
     var onDragEnded: () -> Void
     var onLongPressStarted: () -> Void
@@ -22,9 +25,9 @@ public struct DraggableCircle: View {
     
     public var body: some View {
         Circle()
-            .fill(Color.blue)
-            .frame(width: 20, height: 20)
-            .offset(x: position * width - 10)
+            .fill(color)
+            .frame(width: width, height: height)
+            .offset(x: position * containerWidth - 10)
             .gesture(
                 longPressGesture.sequenced(before: dragGesture)
             )
@@ -46,10 +49,10 @@ public struct DraggableCircle: View {
     var dragGesture: some Gesture {
         DragGesture()
             .onChanged { value in
-                self.position = min(max(0, value.location.x / self.width), 1)
+                self.position = min(max(0, value.location.x / self.containerWidth), 1)
             }
             .onEnded({ value in
-                self.endPosition = min(max(0, value.location.x / self.width), 1)
+                self.endPosition = min(max(0, value.location.x / self.containerWidth), 1)
                 self.onDragEnded()
             })
     }
@@ -59,7 +62,6 @@ public struct WaveformView: View {
     
     // - MARK: Public
     @State var audioURL: URL
-    public var spacing: CGFloat = 2.0
     
     // - MARK: Private
     @State private var waveformViewModel: WaveformViewModel
@@ -102,7 +104,7 @@ public struct WaveformView: View {
                 Button(action: {
                     waveformViewModel.playOrPauseAudioPlayer()
                 }) {
-                    waveformViewModel.isPlaying ? Image.pause.resizable().scaledToFit() : Image.play.resizable().scaledToFit()
+                    waveformViewModel.isPlaying ? configuration.images.pause.resizable().scaledToFit() : configuration.images.play.resizable().scaledToFit()
                 }
                 .frame(width: 20, height: 20)
                 Spacer(minLength: 32)
@@ -121,7 +123,10 @@ public struct WaveformView: View {
                         }
                         DraggableCircle(position: $waveformViewModel.audioProgress,
                                         endPosition: $endDragPosition,
-                                        width: geometry.size.width,
+                                        containerWidth: geometry.size.width,
+                                        width: configuration.draggableCircleConfig.width,
+                                        height: configuration.draggableCircleConfig.height,
+                                        color: configuration.draggableCircleConfig.fillColor,
                                         onDragStarted: handleDragStarted,
                                         onDragEnded: handleDragEnded,
                                         onLongPressStarted: handleOnLongPressStarted,
@@ -189,19 +194,18 @@ public struct WaveformView: View {
         let newPosition = Double(endDragPosition) * Double(waveformViewModel.audioLengthSamples)
         let newTime = newPosition * waveformViewModel.audioLengthSeconds / Double(waveformViewModel.audioLengthSamples)
         let doubleDownTime = floor(newTime)
-        if doubleDownTime == 0 {
-            waveformViewModel.seekEnd(to: 0)
+        var time: Double
+        if doubleDownTime.isZero {
+            time = -waveformViewModel.audioTime.elapsedTime
+        }
+        else if doubleDownTime.isLessThanOrEqualTo(waveformViewModel.audioTime.elapsedTime) {
+            time = -(waveformViewModel.audioTime.elapsedTime - doubleDownTime)
         }
         else {
-            var time: Double
-            if doubleDownTime <= waveformViewModel.audioTime.elapsedTime {
-                time = -(waveformViewModel.audioTime.elapsedTime - doubleDownTime)
-            }
-            else {
-                time = doubleDownTime - waveformViewModel.audioTime.elapsedTime
-            }
-            waveformViewModel.seekEnd(to: time)
+            time = doubleDownTime - waveformViewModel.audioTime.elapsedTime
         }
+
+        waveformViewModel.seekEnd(to: time)
     }
     
     private func handleOnLongPressStarted() {
