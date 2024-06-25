@@ -11,18 +11,39 @@ import SwiftUI
 public enum AudioVisualizer {
     
     public enum Style: Equatable, Sendable {
-        
         case filled(Color, Color)
         case gradient([Color])
         case maskedGradient(Color)
     }
     
+    public enum AnimationType: Equatable, Sendable {
+        case equal
+        case lowToHigh
+        case highToLow
+        case symetricMiddleHigh
+        case symetricMiddleLow
+        case shuffle
+        case bounce
+        case spiral
+        case heartbeat
+        case randomPeaks
+        case oscillation
+        case risingAndFallingPeaks
+    }
+    
     public struct Configuration: Equatable, Sendable {
         
         public let style: Style
+        public let animationType: AnimationType
+        public let maxNumberOfAmplitudes: Int
         
-        public init(style: Style) {
+        public init(
+            style: Style = .maskedGradient(.gray),
+            animationType: AnimationType = .symetricMiddleHigh,
+            maxNumberOfAmplitudes: Int = 10) {
             self.style = style
+            self.animationType = animationType
+            self.maxNumberOfAmplitudes = maxNumberOfAmplitudes
         }
     }
 }
