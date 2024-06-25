@@ -45,9 +45,7 @@ class AudioVisualizerViewModel {
             return nil
         }
     }
-    
-    private let audioSession = AudioSession()
-    
+        
     init(audioURL url: URL, maxNumberOfAmplitudes: Int, animationType: AudioVisualizer.AnimationType) {
         audioEngine = AudioEngine()
         audioURL = url
@@ -55,7 +53,6 @@ class AudioVisualizerViewModel {
         self.animationType = animationType
         audioLevel.levelProvider = audioEngine.audioProcessing
         setDisplayLink()
-//        audioSession.delegate = self
         amplitudes = [Double](repeating: 0.0, count: maxNumberOfAmplitudes)
     }
     
@@ -83,7 +80,6 @@ class AudioVisualizerViewModel {
             try await audioEngine.setAudio(forURL: url, priority: priority)
             
             guard let _ = audioEngine.audioFormat else { return }
-//            audioSession.setupAudioSession(sampleRate: audioFormat.sampleRate)
 
             audioEngine.setup()
             audioEngine.start()
@@ -228,21 +224,4 @@ class AudioVisualizerViewModel {
         amplitudes = [Double](repeating: 0.0, count: 10)
     }
 
-}
-
-// - MARK: Delegate
-extension AudioVisualizerViewModel: AudioSessionDelegate {
-    
-    func didInterruptionBegin(forAudioSession audioSession: AudioSession) {
-        audioEngine.stopPlayers()
-    }
-    
-    func mediaServicesWereReset(forAudioSession audioSession: AudioSession) {
-        resetAudioEngine()
-    }
-    
-    func resetAudioEngine() {
-        audioEngine = nil
-        audioEngine = AudioEngine()
-    }
 }
