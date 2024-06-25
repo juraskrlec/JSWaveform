@@ -78,9 +78,9 @@ class AudioVisualizerViewModel {
         }
     }
     
-    func setAudioEngine(forURL url: URL) async throws {
+    func setAudioEngine(forURL url: URL, priority: TaskPriority = .userInitiated) async throws {
         do {
-            try await audioEngine.setAudio(forURL: url)
+            try await audioEngine.setAudio(forURL: url, priority: priority)
             
             guard let _ = audioEngine.audioFormat else { return }
 //            audioSession.setupAudioSession(sampleRate: audioFormat.sampleRate)

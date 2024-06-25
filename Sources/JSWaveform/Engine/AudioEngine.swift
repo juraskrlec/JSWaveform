@@ -138,8 +138,8 @@ class AudioEngine {
         }
     }
 
-    func setAudio(forURL url: URL, qos: DispatchQoS.QoSClass = .userInitiated) async throws {
-        try await Task(priority: taskPriority(qos: qos)) {
+    func setAudio(forURL url: URL, priority: TaskPriority = .userInitiated) async throws {
+        try await Task(priority: priority) {
             guard let tempAudioBuffer = AudioEngine.getBuffer(fileURL: url) else { throw AudioEngineError.bufferRetrieveError }
             audioBuffer = tempAudioBuffer
             guard let audioBuffer = audioBuffer else { throw AudioEngineError.bufferRetrieveError }
@@ -181,8 +181,8 @@ class AudioEngine {
         audioTimePitch.rate = rate
     }
     
-    func loadWaveform(from audioURL: URL, qos: DispatchQoS.QoSClass = .userInitiated) async throws -> [Float] {
-        try await Task(priority: taskPriority(qos: qos)) {
+    func loadWaveform(from audioURL: URL, priority: TaskPriority = .userInitiated) async throws -> [Float] {
+        try await Task(priority: priority) {
             let file = try? AVAudioFile(forReading: audioURL)
             guard let format = file?.processingFormat, let length = file?.length else { throw AudioEngineError.audioFileNotFound }
             
@@ -197,8 +197,8 @@ class AudioEngine {
         }.value
     }
     
-    func loadWaveform(from audioURL: URL, downsampledTo targetSampleCount: Int, qos: DispatchQoS.QoSClass = .userInitiated) async throws -> [Float] {
-        try await Task(priority: taskPriority(qos: qos)) {
+    func loadWaveform(from audioURL: URL, downsampledTo targetSampleCount: Int, priority: TaskPriority = .userInitiated) async throws -> [Float] {
+        try await Task(priority: priority) {
             let file = try? AVAudioFile(forReading: audioURL)
             guard let format = file?.processingFormat, let length = file?.length else { throw AudioEngineError.audioFileNotFound }
             
@@ -223,25 +223,6 @@ class AudioEngine {
             
             return downsampledData
         }.value
-    }
-    
-    private func taskPriority(qos: DispatchQoS.QoSClass) -> TaskPriority {
-        switch qos {
-        case .background:
-            return .background
-        case .utility:
-            return .utility
-        case .default:
-            return .medium
-        case .userInitiated:
-            return .userInitiated
-        case .userInteractive:
-            return .high
-        case .unspecified:
-            return .medium
-        @unknown default:
-            return .medium
-        }
     }
 }
 

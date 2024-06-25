@@ -56,7 +56,7 @@ public struct AudioVisualizerView<Content: View>: View {
                 if audioVisualizerViewModel.isAudioPlayerPlaying {
                     audioVisualizerViewModel.stopAudioPlayer()
                 }
-                try await audioVisualizerViewModel.setAudioEngine(forURL: url)
+                try await audioVisualizerViewModel.setAudioEngine(forURL: url, priority: priority)
             }
             catch {
                 assertionFailure(error.localizedDescription)

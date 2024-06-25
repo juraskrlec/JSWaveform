@@ -163,7 +163,7 @@ public struct WaveformView: View {
     private func update(audioURL url: URL) {
         Task(priority: priority) {
             do {
-                let samples = try await waveformViewModel.waveformSamples(forURL: audioURL, downsampledTo: configuration.downsampleNumber)
+                let samples = try await waveformViewModel.waveformSamples(forURL: audioURL, downsampledTo: configuration.downsampleNumber, priority: priority)
                 await MainActor.run {
                     self.samples = samples
                     self.colors = Array(repeating: configuration.geometryConfig.primaryColor, count: samples.count)

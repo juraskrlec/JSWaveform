@@ -79,9 +79,9 @@ class WaveformViewModel {
         removeDisplayLink()
     }
     
-    func waveformSamples(forURL url: URL) async throws -> [Float] {
+    func waveformSamples(forURL url: URL, priority: TaskPriority = .userInitiated) async throws -> [Float] {
         do {
-            let samples = try await audioEngine.loadWaveform(from: url)
+            let samples = try await audioEngine.loadWaveform(from: url, priority: priority)
             return normalizeWaveformData(samples)
         }
         catch {
@@ -89,9 +89,9 @@ class WaveformViewModel {
         }
     }
     
-    func waveformSamples(forURL url: URL, downsampledTo targetSampleCount: Int) async throws -> [Float] {
+    func waveformSamples(forURL url: URL, downsampledTo targetSampleCount: Int, priority: TaskPriority = .userInitiated) async throws -> [Float] {
         do {
-            let samples = try await audioEngine.loadWaveform(from: url, downsampledTo: targetSampleCount)
+            let samples = try await audioEngine.loadWaveform(from: url, downsampledTo: targetSampleCount, priority: priority)
             normalizedSamples = normalizeWaveformData(samples)
             return normalizedSamples
         }
