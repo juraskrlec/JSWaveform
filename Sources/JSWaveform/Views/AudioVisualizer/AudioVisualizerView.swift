@@ -9,7 +9,6 @@ import SwiftUI
 
 public struct AudioVisualizerView<Content: View>: View {
     
-    // - MARK: Private
     @State private var audioVisualizerViewModel: AudioVisualizerViewModel
     private let configuration: AudioVisualizer.Configuration
     private let priority: TaskPriority
@@ -24,10 +23,11 @@ public struct AudioVisualizerView<Content: View>: View {
     ///     - content: Custom shape
     ///
     /// - Returns: Intialized AudioVisualizerView
-    public init(audioURL: URL,
-         configuration: AudioVisualizer.Configuration = AudioVisualizer.Configuration(),
-         priority: TaskPriority = .userInitiated,
-         @ViewBuilder content: @escaping (AudioVisualizerShape) -> Content) {
+    public init(
+        audioURL: URL,
+        configuration: AudioVisualizer.Configuration = AudioVisualizer.Configuration(),
+        priority: TaskPriority = .userInitiated,
+        @ViewBuilder content: @escaping (AudioVisualizerShape) -> Content) {
         self.configuration = configuration
         self.audioVisualizerViewModel = AudioVisualizerViewModel(audioURL: audioURL, maxNumberOfAmplitudes: configuration.maxNumberOfAmplitudes, animationType: configuration.animationType)
         self.priority = priority
