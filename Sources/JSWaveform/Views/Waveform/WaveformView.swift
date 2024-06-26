@@ -60,7 +60,6 @@ public struct DraggableCircle: View {
 
 public struct WaveformView: View {
         
-    // - MARK: Private
     @State private var waveformViewModel: WaveformViewModel
     @State private var samples: [Float] = []
     @State private var colors: [Color] = []

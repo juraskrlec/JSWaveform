@@ -31,7 +31,7 @@ class WaveformViewModel {
     }
     
     // -MARK: Private
-    private var audioEngine: AudioEngine!
+    private var audioEngine: AudioEngine = AudioEngine()
     private var displayLink: CADisplayLink?
     private var needsFileScheduled = true
     private var wasPlaying = false
@@ -70,7 +70,6 @@ class WaveformViewModel {
         
     init(audioURL url: URL) {
         audioURL = url
-        audioEngine = AudioEngine()
         setupAudio()
         setDisplayLink()
     }

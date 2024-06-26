@@ -24,19 +24,19 @@ class AudioVisualizerViewModel {
     // - MARK: Public
     var amplitudes: [Double] = []
     var maxNumberOfAmplitudes: Int
-    var animationType: AudioVisualizer.AnimationType
+    var audioURL: URL
     var isAudioPlayerPlaying: Bool {
         return audioEngine.isAudioPlayerPlaying
     }
-    var audioURL: URL
     
     // - MARK: Private
     private var displayLink: CADisplayLink?
-    private var audioEngine: AudioEngine!
+    private var audioEngine: AudioEngine = AudioEngine()
     private var level: CGFloat = 0
     private var peakLevel: CGFloat = 0
     private var audioLevel = AudioLevel()
-    
+    private var animationType: AudioVisualizer.AnimationType
+
     private var audioFile: AVAudioFile? {
         do {
             return try AVAudioFile(forReading: audioURL)
@@ -47,7 +47,6 @@ class AudioVisualizerViewModel {
     }
         
     init(audioURL url: URL, maxNumberOfAmplitudes: Int, animationType: AudioVisualizer.AnimationType) {
-        audioEngine = AudioEngine()
         audioURL = url
         self.maxNumberOfAmplitudes = maxNumberOfAmplitudes
         self.animationType = animationType
