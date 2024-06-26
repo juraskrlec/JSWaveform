@@ -2,7 +2,7 @@
 //  WaveformView.swift
 //
 //
-//  Created by Jura Skrlec on 23.06.2024..
+//  Created by Jura Skrlec on 23.06.2024.
 //
 
 import SwiftUI
@@ -59,15 +59,11 @@ public struct DraggableCircle: View {
 }
 
 public struct WaveformView: View {
-    
-    // - MARK: Public
-    @State var audioURL: URL
-    
+        
     // - MARK: Private
     @State private var waveformViewModel: WaveformViewModel
     @State private var samples: [Float] = []
     @State private var colors: [Color] = []
-    @State private var progress: CGFloat = 0.0
     @GestureState private var isDetectingLongPress = false
     @State private var completedLongPress = false
     @State private var isDragging: Bool = false
@@ -76,26 +72,21 @@ public struct WaveformView: View {
     
     private let configuration: Waveform.Configuration
     private let priority: TaskPriority
-//    private let content: (DraggableCircle) -> Content
 
     /// Initialize JSWaveformView
     ///
     /// - Parameters:
-    ///     - downsampledTarget: Target Int for downsampling
     ///     - audioURL: Audio file URL
-    ///     - primaryColor: Initial waveform audio color
-    ///     - secondaryColor: Animation color
+    ///     - configuration: View configuration
     ///     - proprity: Task qos
     ///
-    /// - Returns: Intialized JSWaveformView
+    /// - Returns: Intialized WaveformView
     public init(audioURL: URL,
                 configuration: Waveform.Configuration = Waveform.Configuration(),
                 priority: TaskPriority = .userInitiated) {
         self.waveformViewModel = WaveformViewModel(audioURL: audioURL)
-        self.audioURL = audioURL
         self.configuration = configuration
         self.priority = priority
-//        self.content = content
     }
 
     public var body: some View {
@@ -134,9 +125,9 @@ public struct WaveformView: View {
                     }
                 }
                 .onAppear {
-                    update(audioURL: audioURL)
+                    update(audioURL: waveformViewModel.audioURL)
                 }
-                .onChange(of: audioURL) { _, newValue in
+                .onChange(of: waveformViewModel.audioURL) { _, newValue in
                     update(audioURL: newValue)
                 }
                 .onChange(of: waveformViewModel.audioProgress) { _, newValue in
@@ -160,10 +151,15 @@ public struct WaveformView: View {
         }
     }
     
+    /// USe this to update audio with different audio file.
+    public func updateAudio(forURL url: URL) {
+        waveformViewModel.audioURL = url
+    }
+    
     private func update(audioURL url: URL) {
         Task(priority: priority) {
             do {
-                let samples = try await waveformViewModel.waveformSamples(forURL: audioURL, downsampledTo: configuration.downsampleNumber, priority: priority)
+                let samples = try await waveformViewModel.waveformSamples(forURL: url, downsampledTo: configuration.downsampleNumber, priority: priority)
                 await MainActor.run {
                     self.samples = samples
                     self.colors = Array(repeating: configuration.geometryConfig.primaryColor, count: samples.count)

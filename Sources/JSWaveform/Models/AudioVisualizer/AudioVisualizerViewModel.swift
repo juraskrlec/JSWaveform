@@ -75,6 +75,14 @@ class AudioVisualizerViewModel {
         }
     }
     
+    func pauseAudioPlayer() {
+        if audioEngine.isAudioPlayerPlaying {
+            displayLink?.isPaused = true
+            audioEngine.pausePlayers()
+            stopAudioAnimation()
+        }
+    }
+    
     func setAudioEngine(forURL url: URL, priority: TaskPriority = .userInitiated) async throws {
         do {
             try await audioEngine.setAudio(forURL: url, priority: priority)
@@ -202,7 +210,6 @@ class AudioVisualizerViewModel {
             targetAmplitudes = risingAmplitudes + risingAmplitudes.reversed()
         }
         
-        
         if peakLevel > 0 {
             self.amplitudes = self.amplitudes.enumerated().map { index, current in
                 self.lowPassFilter(currentValue: current, targetValue: targetAmplitudes[index])
@@ -221,7 +228,7 @@ class AudioVisualizerViewModel {
     
     // - MARK: Animations
     func stopAudioAnimation() {
-        amplitudes = [Double](repeating: 0.0, count: 10)
+        amplitudes = [Double](repeating: 0.0, count: maxNumberOfAmplitudes)
     }
 
 }
