@@ -137,7 +137,7 @@ public struct WaveformView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.capsule)
-                .tint(.gray)
+                .tint(configuration.timeEffectButtonConfig.tintColor)
             }
             HStack {
                 Text(waveformViewModel.audioTime.elapsedText)
