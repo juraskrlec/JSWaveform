@@ -136,7 +136,7 @@ class WaveformViewModel {
     
     func pauseAudioPlayer() {
         isPlaying = false
-        if audioEngine.isAudioPlayerPlaying {
+        if isAudioPlayerPlaying {
             displayLink?.isPaused = true
             audioEngine.pausePlayers()
         }
