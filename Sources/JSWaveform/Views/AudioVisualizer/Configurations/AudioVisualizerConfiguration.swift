@@ -22,13 +22,6 @@ public enum AudioVisualizer {
         case highToLow
         case symetricMiddleHigh
         case symetricMiddleLow
-        case shuffle
-        case bounce
-        case spiral
-        case heartbeat
-        case randomPeaks
-        case oscillation
-        case risingAndFallingPeaks
     }
     
     public struct Configuration: Equatable, Sendable {

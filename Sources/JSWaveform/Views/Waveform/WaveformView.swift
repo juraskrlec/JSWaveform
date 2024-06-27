@@ -96,7 +96,6 @@ public struct WaveformView: View {
                 }) {
                     waveformViewModel.isPlaying ? configuration.images.pause.resizable().scaledToFit() : configuration.images.play.resizable().scaledToFit()
                 }
-                .frame(width: 20, height: 20)
                 Spacer(minLength: 32)
                 GeometryReader { geometry in
                     let totalSpacing = configuration.geometryConfig.spacing * CGFloat(samples.count - 1)
@@ -132,12 +131,10 @@ public struct WaveformView: View {
                 .onChange(of: waveformViewModel.audioProgress) { _, newValue in
                     animatePosition()
                 }
-                .frame(height: 40)
                 Spacer(minLength: 16)
                 Button(waveformViewModel.currentAudioPlayback.label) {
                     waveformViewModel.updateAudioPlayback()
                 }
-                .frame(width:70)
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.capsule)
                 .tint(.gray)
