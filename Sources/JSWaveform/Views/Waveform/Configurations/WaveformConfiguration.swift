@@ -49,7 +49,11 @@ public enum Waveform {
         }
         
         public struct TimeEffectButtonConfig: Equatable, Sendable {
+            public let tintColor: Color
             
+            public init(tintColor: Color = .gray) {
+                self.tintColor = tintColor
+            }
         }
     }
     
@@ -57,6 +61,7 @@ public enum Waveform {
         public let images: Style.Images
         public let geometryConfig: Style.GeometryConfig
         public let draggableCircleConfig: Style.DragableCircleConfig
+        public let timeEffectButtonConfig: Style.TimeEffectButtonConfig
         public let backgroundColor: Color
         public let downsampleNumber: Int
         
@@ -64,14 +69,16 @@ public enum Waveform {
             images: Style.Images = Style.Images(),
             geometryConfig: Style.GeometryConfig = Style.GeometryConfig(),
             draggableCircleConfig: Style.DragableCircleConfig = Style.DragableCircleConfig(),
+            timeEffectButtonConfig: Style.TimeEffectButtonConfig = Style.TimeEffectButtonConfig(),
             backgroundColor: Color = .clear,
             downsampleNumber: Int = 20) {
                 
-            self.images = images
-            self.geometryConfig = geometryConfig
-            self.draggableCircleConfig = draggableCircleConfig
-            self.backgroundColor = backgroundColor
-            self.downsampleNumber = downsampleNumber
+                self.images = images
+                self.geometryConfig = geometryConfig
+                self.draggableCircleConfig = draggableCircleConfig
+                self.timeEffectButtonConfig = timeEffectButtonConfig
+                self.backgroundColor = backgroundColor
+                self.downsampleNumber = downsampleNumber
         }
     }
 }
