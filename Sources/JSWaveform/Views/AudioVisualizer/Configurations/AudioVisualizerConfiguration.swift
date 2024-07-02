@@ -59,5 +59,4 @@ public struct AudioVisualizerShapeStyler {
                 .mask((LinearGradient(gradient: Gradient(colors: [.clear, color, .clear]), startPoint: .leading, endPoint: .trailing)))
         }
     }
-    
 }

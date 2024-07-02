@@ -96,31 +96,39 @@ public struct WaveformView: View {
                 }) {
                     waveformViewModel.isPlaying ? configuration.images.pause.resizable().scaledToFit() : configuration.images.play.resizable().scaledToFit()
                 }
-                Spacer(minLength: 32)
+                Spacer(minLength: configuration.playSpacerLength)
                 GeometryReader { geometry in
                     let totalSpacing = configuration.geometryConfig.spacing * CGFloat(samples.count - 1)
                     let width = (geometry.size.width - totalSpacing) / CGFloat(samples.count)
                     let height = geometry.size.height
                     
-                    ZStack(alignment: .leading) {
-                        HStack(spacing: configuration.geometryConfig.spacing) {
-                            ForEach(samples.indices, id: \.self) { index in
-                                RoundedRectangle(cornerRadius: configuration.geometryConfig.cornerRadius)
-                                    .fill(colors[index])
-                                    .frame(width: width, height: CGFloat(samples[index]) * height)
+                    VStack {
+                        ZStack(alignment: .leading) {
+                            HStack(spacing: configuration.geometryConfig.spacing) {
+                                ForEach(samples.indices, id: \.self) { index in
+                                    RoundedRectangle(cornerRadius: configuration.geometryConfig.cornerRadius)
+                                        .fill(colors[index])
+                                        .frame(width: width, height: CGFloat(samples[index]) * height)
+                                }
                             }
+                            DraggableCircle(position: $waveformViewModel.audioProgress,
+                                            endPosition: $endDragPosition,
+                                            containerWidth: geometry.size.width,
+                                            width: configuration.draggableCircleConfig.width,
+                                            height: configuration.draggableCircleConfig.height,
+                                            color: configuration.draggableCircleConfig.fillColor,
+                                            onDragStarted: handleDragStarted,
+                                            onDragEnded: handleDragEnded,
+                                            onLongPressStarted: handleOnLongPressStarted,
+                                            onLongPressEnded: handleOnLongPressEndeed)
                         }
-                        DraggableCircle(position: $waveformViewModel.audioProgress,
-                                        endPosition: $endDragPosition,
-                                        containerWidth: geometry.size.width,
-                                        width: configuration.draggableCircleConfig.width,
-                                        height: configuration.draggableCircleConfig.height,
-                                        color: configuration.draggableCircleConfig.fillColor,
-                                        onDragStarted: handleDragStarted,
-                                        onDragEnded: handleDragEnded,
-                                        onLongPressStarted: handleOnLongPressStarted,
-                                        onLongPressEnded: handleOnLongPressEndeed)
+                        HStack {
+                            Text(waveformViewModel.audioTime.elapsedText)
+                            Spacer()
+                            Text(waveformViewModel.audioTime.audioLengthText)
+                        }
                     }
+
                 }
                 .onAppear {
                     update(audioURL: waveformViewModel.audioURL)
@@ -131,18 +139,13 @@ public struct WaveformView: View {
                 .onChange(of: waveformViewModel.audioProgress) { _, newValue in
                     animatePosition()
                 }
-                Spacer(minLength: 16)
+                Spacer(minLength: configuration.effectSpacerLength)
                 Button(waveformViewModel.currentAudioPlayback.label) {
                     waveformViewModel.updateAudioPlayback()
                 }
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.capsule)
                 .tint(configuration.timeEffectButtonConfig.tintColor)
-            }
-            HStack {
-                Text(waveformViewModel.audioTime.elapsedText)
-                Spacer()
-                Text(waveformViewModel.audioTime.audioLengthText)
             }
         }
     }
