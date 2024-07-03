@@ -64,6 +64,8 @@ public enum Waveform {
         public let timeEffectButtonConfig: Style.TimeEffectButtonConfig
         public let backgroundColor: Color
         public let downsampleNumber: Int
+        public let playSpacerLength: CGFloat
+        public let effectSpacerLength: CGFloat
         
         public init(
             images: Style.Images = Style.Images(),
@@ -71,7 +73,9 @@ public enum Waveform {
             draggableCircleConfig: Style.DragableCircleConfig = Style.DragableCircleConfig(),
             timeEffectButtonConfig: Style.TimeEffectButtonConfig = Style.TimeEffectButtonConfig(),
             backgroundColor: Color = .clear,
-            downsampleNumber: Int = 20) {
+            downsampleNumber: Int = 20,
+            playSpacerLength: CGFloat = 32,
+            effectSpacerLength: CGFloat = 16) {
                 
                 self.images = images
                 self.geometryConfig = geometryConfig
@@ -79,6 +83,8 @@ public enum Waveform {
                 self.timeEffectButtonConfig = timeEffectButtonConfig
                 self.backgroundColor = backgroundColor
                 self.downsampleNumber = downsampleNumber
+                self.playSpacerLength = playSpacerLength
+                self.effectSpacerLength = effectSpacerLength
         }
     }
 }
