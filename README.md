@@ -22,9 +22,9 @@ import JSWaveform
 
 `JSWaveform` provides native Swift and SwiftUI components. For now, it has 2 major SwiftUI views:
 
+* `AudioPlayerView`
 * `AudioVisualizerView`
-* `WaveformView`
 
-### AudioVisualizerView
+### AudioPlayerView
 
 
