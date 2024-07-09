@@ -18,7 +18,7 @@ public enum AudioVisualizerAnimationType {
 }
 
 @Observable
-@MainActor class AudioVisualizerViewModel {
+@MainActor class AudioVisualizerModel {
     
     // - MARK: Public
     var amplitudes: [Double] = []

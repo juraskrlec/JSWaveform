@@ -68,7 +68,7 @@ private actor WaveformLoader {
 }
 
 @Observable
-@MainActor class WaveformViewModel {
+@MainActor class WaveformModel {
     
     // -MARK: Public
     var audioTime: AudioTime = .zero
