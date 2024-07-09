@@ -9,57 +9,116 @@ import AVFoundation
 import Foundation
 import Observation
 
-class AudioEngine {
+actor AudioEngine {
     
-    private var avAudioEngine = AVAudioEngine()
-    private var audioPlayer = AVAudioPlayerNode()
-    private var audioTimePitch = AVAudioUnitTimePitch()
+    private let avAudioEngine = AVAudioEngine()
+    private let audioPlayer = AVAudioPlayerNode()
+    private let audioTimePitch = AVAudioUnitTimePitch()
     private var audioBuffer: AVAudioPCMBuffer?
-    
-    public private(set) var audioFormat: AVAudioFormat?
-    public private(set) var audioProcessing = AudioProcessing()
-    
-    var lastRenderTime: AVAudioTime? {
-        get {
-            return audioPlayer.lastRenderTime
-        }
-    }
-    
-    var playerTime: AVAudioTime? {
-        guard let lastRenderTime else {
-            return nil
-        }
-        return audioPlayer.playerTime(forNodeTime: lastRenderTime)
-    }
-        
-    func playerTime(forNodeTime nodeTime: AVAudioTime) -> AVAudioTime? {
-        return audioPlayer.playerTime(forNodeTime: nodeTime)
-    }
+    private var asyncBufferStream: AsyncStream<AVAudioPCMBuffer>?
+    private var continuation: AsyncStream<AVAudioPCMBuffer>.Continuation?
+    private var audioFormat: AVAudioFormat?
     
     enum AudioEngineError: Error {
         case bufferRetrieveError
-        case fileFormatError
-        case audioFileNotFound
     }
     
     init() {
         avAudioEngine.attach(audioPlayer)
         avAudioEngine.attach(audioTimePitch)
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(configChanged(_:)),
-                                               name: .AVAudioEngineConfigurationChange,
-                                               object: avAudioEngine)
-    }
-    
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-    }
-    
-    @objc
-    func configChanged(_ notification: Notification) {
-        checkEngineIsRunning()
     }
 
+    nonisolated func setup() {
+        let output = avAudioEngine.outputNode
+        let mainMixer = avAudioEngine.mainMixerNode
+
+        avAudioEngine.connect(audioPlayer, to: audioTimePitch, format:nil)
+        avAudioEngine.connect(audioTimePitch, to: mainMixer, format: nil)
+        avAudioEngine.connect(mainMixer, to: output, format: nil)
+        avAudioEngine.prepare()
+    }
+    
+    func prepareBuffer() {
+        asyncBufferStream = AsyncStream { continuation in
+             self.continuation = continuation
+         }
+        
+        audioPlayer.installTap(onBus: 0, bufferSize: 256, format: nil) { buffer, _ in
+            self.continuation?.yield(buffer)
+        }
+    }
+    
+    func getBuffer() -> AsyncStream<AVAudioPCMBuffer>? {
+        return asyncBufferStream
+    }
+
+    nonisolated func start() {
+        do {
+            try avAudioEngine.start()
+        } catch {
+            print("Could not start audio engine: \(error)")
+        }
+    }
+
+    func checkEngineIsRunning() {
+        if !avAudioEngine.isRunning {
+            start()
+        }
+    }
+    
+    func scheduleBuffer(priority: TaskPriority = .userInitiated) async {
+        Task(priority: priority) {
+            guard let audioBuffer = audioBuffer else { return }
+            await audioPlayer.scheduleBuffer(audioBuffer, at: nil, options: .interrupts)
+        }
+    }
+
+    func setBuffer(forURL url: URL, priority: TaskPriority = .userInitiated) async throws {
+        try await Task(priority: priority) {
+            guard let tempAudioBuffer = AudioEngine.getBuffer(fileURL: url) else { throw AudioEngineError.bufferRetrieveError }
+            audioBuffer = tempAudioBuffer
+            guard let audioBuffer = audioBuffer else { throw AudioEngineError.bufferRetrieveError }
+            audioFormat = audioBuffer.format
+        }.value
+    }
+
+    nonisolated func stopPlayers() {
+        audioPlayer.stop()
+    }
+    
+    nonisolated func pausePlayers() {
+        audioPlayer.pause()
+    }
+    
+    nonisolated func playPlayers() {
+        audioPlayer.play()
+    }
+        
+    func seekAudio(audioFile: AVAudioFile, startingFrame: AVAudioFramePosition, frameCount: AVAudioFrameCount) async {
+        await withCheckedContinuation { continuation in
+            audioPlayer.scheduleSegment(audioFile, startingFrame: startingFrame, frameCount: frameCount, at: nil) {
+                continuation.resume()
+            }
+        }
+    }
+    
+    func scheduleFile(file: AVAudioFile) async {
+        await withCheckedContinuation { continuation in
+            audioPlayer.scheduleFile(file, at: nil) {
+                continuation.resume()
+            }
+        }
+    }
+    
+    func setAudioTimePitchRate(rate: Float) {
+        audioTimePitch.rate = rate
+    }
+    
+    func currentFrame() -> AVAudioFramePosition {
+        guard let playerTime = playerTime(forNodeTime: audioPlayer.lastRenderTime) else { return 0 }
+        return playerTime.sampleTime
+    }
+    
     private static func getBuffer(fileURL: URL) -> AVAudioPCMBuffer? {
         let file: AVAudioFile!
         do {
@@ -84,145 +143,10 @@ class AudioEngine {
         file.framePosition = 0
         return buffer
     }
-
-    func setup() {
-        let input = avAudioEngine.inputNode
-        do {
-            try input.setVoiceProcessingEnabled(true)
-        } catch {
-            print("Could not enable voice processing \(error)")
-            return
-        }
-
-        let output = avAudioEngine.outputNode
-        let mainMixer = avAudioEngine.mainMixerNode
-
-        avAudioEngine.connect(audioPlayer, to: audioTimePitch, format:nil)
-        avAudioEngine.connect(audioTimePitch, to: mainMixer, format: nil)
-        avAudioEngine.connect(mainMixer, to: output, format: nil)
-
-        audioPlayer.installTap(onBus: 0, bufferSize: 256, format: nil) { buffer, _ in
-            if self.audioPlayer.isPlaying {
-                self.audioProcessing.process(buffer: buffer)
-            } else {
-                self.audioProcessing.processSilence()
-            }
-        }
-
-        avAudioEngine.prepare()
-    }
-
-    func start() {
-        do {
-            try avAudioEngine.start()
-        } catch {
-            print("Could not start audio engine: \(error)")
-        }
-    }
-
-    func checkEngineIsRunning() {
-        if !avAudioEngine.isRunning {
-            start()
-        }
-    }
     
-    /// Use this when you need to use buffers, as when you animate amplitude or power
-    /// Else, use play() instead, when scheduling a audio file
-    func audioPlayerPlay(_ shouldPlay: Bool) {
-        if shouldPlay {
-            guard let audioBuffer = audioBuffer else { return }
-            audioPlayer.scheduleBuffer(audioBuffer, at: nil, options: .loops)
-            audioPlayer.play()
-        } else {
-            audioPlayer.stop()
-        }
-    }
-
-    func setAudio(forURL url: URL, priority: TaskPriority = .userInitiated) async throws {
-        try await Task(priority: priority) {
-            guard let tempAudioBuffer = AudioEngine.getBuffer(fileURL: url) else { throw AudioEngineError.bufferRetrieveError }
-            audioBuffer = tempAudioBuffer
-            guard let audioBuffer = audioBuffer else { throw AudioEngineError.bufferRetrieveError }
-            audioFormat = audioBuffer.format
-        }.value
-    }
-
-    func stopPlayers() {
-        audioPlayer.stop()
-    }
-    
-    func pausePlayers() {
-        audioPlayer.pause()
-    }
-    
-    func playPlayers() {
-        audioPlayer.play()
-    }
-
-    var isAudioPlayerPlaying: Bool {
-        return audioPlayer.isPlaying
-    }
-    
-    typealias CompletionHandler = () -> Void
-    
-    func seekAudio(audioFile: AVAudioFile, startingFrame: AVAudioFramePosition, frameCount: AVAudioFrameCount, completion: @escaping CompletionHandler) {
-        audioPlayer.scheduleSegment(audioFile, startingFrame: startingFrame, frameCount: frameCount, at: nil) {
-            completion()
-        }
-    }
-    
-    func scheduleFile(file: AVAudioFile, completion: @escaping CompletionHandler) {
-        audioPlayer.scheduleFile(file, at: nil) {
-            completion()
-        }
-    }
-    
-    func setAudioTimePitchRate(rate: Float) {
-        audioTimePitch.rate = rate
-    }
-    
-    func loadWaveform(from audioURL: URL, priority: TaskPriority = .userInitiated) async throws -> [Float] {
-        try await Task(priority: priority) {
-            let file = try? AVAudioFile(forReading: audioURL)
-            guard let format = file?.processingFormat, let length = file?.length else { throw AudioEngineError.audioFileNotFound }
-            
-            let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(length))
-            try? file?.read(into: buffer!)
-            
-            guard let floatChannelData = buffer?.floatChannelData else { throw AudioEngineError.bufferRetrieveError }
-            let channelData = floatChannelData.pointee
-            
-            let samples = stride(from: 0, to: Int(length), by: Int(format.channelCount)).map { channelData[$0] }
-            return samples
-        }.value
-    }
-    
-    func loadWaveform(from audioURL: URL, downsampledTo targetSampleCount: Int, priority: TaskPriority = .userInitiated) async throws -> [Float] {
-        try await Task(priority: priority) {
-            let file = try? AVAudioFile(forReading: audioURL)
-            guard let format = file?.processingFormat, let length = file?.length else { throw AudioEngineError.audioFileNotFound }
-            
-            let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(length))
-            try? file?.read(into: buffer!)
-            
-            guard let floatChannelData = buffer?.floatChannelData else { throw AudioEngineError.bufferRetrieveError }
-            let channelData = floatChannelData.pointee
-            
-            let sampleCount = Int(length)
-            let samplesPerPixel = sampleCount / targetSampleCount
-            var downsampledData = [Float]()
-            
-            for i in 0..<targetSampleCount {
-                let start = i * samplesPerPixel
-                let end = min((i + 1) * samplesPerPixel, sampleCount)
-                let sampleRange = start..<end
-                
-                let maxSample = sampleRange.map { channelData[$0] }.max() ?? 0
-                downsampledData.append(maxSample)
-            }
-            
-            return downsampledData
-        }.value
+    private func playerTime(forNodeTime nodeTime: AVAudioTime?) -> AVAudioTime? {
+        guard let nodeTime else { return nil }
+        return audioPlayer.playerTime(forNodeTime: nodeTime)
     }
 }
 

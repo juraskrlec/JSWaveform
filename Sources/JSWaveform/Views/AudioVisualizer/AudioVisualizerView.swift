@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+@MainActor
 public struct AudioVisualizerView<Content: View>: View {
     
     @State private var audioVisualizerViewModel: AudioVisualizerViewModel
@@ -39,10 +40,10 @@ public struct AudioVisualizerView<Content: View>: View {
             content(AudioVisualizerShape(amplitudes: audioVisualizerViewModel.amplitudes))
         }
         .onAppear {
-            update(audioURL: self.audioVisualizerViewModel.audioURL)
+            update(audioURL: audioVisualizerViewModel.audioURL)
         }
-        .onChange(of: self.audioVisualizerViewModel.audioURL) { _, newValue in
-            update(audioURL: newValue)
+        .onDisappear {
+            audioVisualizerViewModel.clean()
         }
         .background(.clear)
         .animation(.linear(duration: 0.1), value: audioVisualizerViewModel.amplitudes)
@@ -51,10 +52,8 @@ public struct AudioVisualizerView<Content: View>: View {
     private func update(audioURL url: URL) {
         Task(priority: priority) {
             do {
-                if audioVisualizerViewModel.isAudioPlayerPlaying {
-                    audioVisualizerViewModel.stopAudioPlayer()
-                }
-                try await audioVisualizerViewModel.setAudioEngine(forURL: url, priority: priority)
+                try await audioVisualizerViewModel.prepareAudioEngine(priority: priority)
+                await audioVisualizerViewModel.processAudio()
             }
             catch {
                 assertionFailure(error.localizedDescription)
@@ -67,17 +66,17 @@ public struct AudioVisualizerView<Content: View>: View {
         audioVisualizerViewModel.playAudioPlayer()
     }
     
-    /// Use this to stop playing file.
+    /// Use this to stop file.
     public func stopAudio() {
         audioVisualizerViewModel.stopAudioPlayer()
     }
     
-    /// Use this to puase playing file.
+    /// Use this to pause file.
     public func pauseAudio() {
         audioVisualizerViewModel.pauseAudioPlayer()
     }
     
-    /// USe this to update audio with different audio file.
+    /// Use this to update audio with different audio file.
     public func updateAudio(forURL url: URL) {
         audioVisualizerViewModel.audioURL = url
     }
