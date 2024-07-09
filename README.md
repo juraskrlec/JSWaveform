@@ -25,6 +25,25 @@ import JSWaveform
 * `AudioPlayerView`
 * `AudioVisualizerView`
 
-### AudioPlayerView
+### `AudioPlayerView`
+
+`AudioPlayerView` renders audio player which consits of play/pause button, downsampled waveform and time pitch effect button. 
+
+![AudioPlayer](./Images/AudioPlayer.png)
+
+### Usage
+
+```swift
+    let url = Bundle.main.url(forResource: "Example", withExtension: "aif")
+    AudioPlayerView(audioURL: url!)
+```
+
+### Configuration
+
+If you want to configure it, you can, by setting your [AudioPlayer.Configuration](https://github.com/juraskrlec/JSWaveform/blob/main/Sources/JSWaveform/Views/AudioPlayer/Configurations/AudioPlayerConfiguration.swift) in it's init. 
+
+
+### `AudioVisualizerView`
+
 
 
