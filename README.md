@@ -25,7 +25,7 @@ import JSWaveform
 * `AudioPlayerView`
 * `AudioVisualizerView`
 
-### `AudioPlayerView`
+### AudioPlayerView
 
 `AudioPlayerView` renders audio player which consits of play/pause button, downsampled waveform and time pitch effect button. 
 
@@ -40,10 +40,46 @@ import JSWaveform
 
 ### Configuration
 
-If you want to configure it, you can, by setting your [AudioPlayer.Configuration](https://github.com/juraskrlec/JSWaveform/blob/main/Sources/JSWaveform/Views/AudioPlayer/Configurations/AudioPlayerConfiguration.swift) in it's init. 
+If you want to configure it, you can, by setting [AudioPlayer.Configuration](https://github.com/juraskrlec/JSWaveform/blob/main/Sources/JSWaveform/Views/AudioPlayer/Configurations/AudioPlayerConfiguration.swift) in it's init. 
 
+### AudioVisualizerView
 
-### `AudioVisualizerView`
+`AudioVisualizerView` renders audio visualizer which animates [AudioVisualizerShape](https://github.com/juraskrlec/JSWaveform/blob/main/Sources/JSWaveform/Views/AudioVisualizer/AudioVisualizerShape.swift) based on audio amplitudes. This image shows default animation called `symetricMiddleHigh` where peak amplitudes are in the middle and average on the sides. You can see more available animations and set them using [AudioVisualizer.Configuration](https://github.com/juraskrlec/JSWaveform/blob/main/Sources/JSWaveform/Views/AudioVisualizer/Configurations/AudioVisualizerConfiguration.swift).
 
+![AudioVisualizer](./Images/AudioVisualizer.png)
 
+### Usage
+
+```swift
+    let url = Bundle.main.url(forResource: "Example", withExtension: "aif")
+    AudioVisualizerView(audioURL: url!)
+```
+
+You can also play/stop audio. Example:
+
+```swift
+    Toggle("Play audio", isOn: $playAudio)
+        .tint(.blue)
+        .onChange(of: playAudio) { _, _ in
+            if playAudio {
+                audioVisualizerView.playAudio()
+            }
+            else {
+                audioVisualizerView.stopAudio()
+            }
+        }
+```
+
+### Configuration
+
+If you want to configure it, you can, by setting [AudioVisualizer.Configuration](https://github.com/juraskrlec/JSWaveform/blob/main/Sources/JSWaveform/Views/AudioVisualizer/Configurations/AudioVisualizerConfiguration.swift) in its init. 
+
+## Read more about it
+
+You can read more about this at my site [juraskrlec.com](https://juraskrlec.com).
+
+## Connect
+
+[Linkedin](https://www.linkedin.com/in/juraskrlec/)
+[Twitter/X](https://www.x.com/SkrlecJura)
 
