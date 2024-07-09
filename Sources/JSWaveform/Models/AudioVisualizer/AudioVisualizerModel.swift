@@ -9,14 +9,6 @@ import Foundation
 import AVFoundation
 import Observation
 
-public enum AudioVisualizerAnimationType {
-    case equal
-    case lowToHigh
-    case highToLow
-    case symetricMiddleHigh
-    case symetricMiddleLow
-}
-
 @Observable
 @MainActor class AudioVisualizerModel {
     
