@@ -18,22 +18,21 @@ public enum AudioVisualizerAnimationType {
 }
 
 @Observable
-class AudioVisualizerViewModel {
+@MainActor class AudioVisualizerViewModel {
     
     // - MARK: Public
     var amplitudes: [Double] = []
     var maxNumberOfAmplitudes: Int
     var audioURL: URL
-    var isAudioPlayerPlaying: Bool {
-        return audioEngine.isAudioPlayerPlaying
-    }
+    var isPlaying: Bool = false
     
     // - MARK: Private
     private var displayLink: CADisplayLink?
-    private var audioEngine: AudioEngine = AudioEngine()
+    private let audioEngine: AudioEngine = AudioEngine()
+    private let audioProcessing = AudioProcessing()
     private var level: CGFloat = 0
     private var peakLevel: CGFloat = 0
-    private var audioLevel = AudioLevel()
+    private let audioLevel = AudioLevel()
     private var animationType: AudioVisualizer.AnimationType
 
     private var audioFile: AVAudioFile? {
@@ -49,51 +48,64 @@ class AudioVisualizerViewModel {
         audioURL = url
         self.maxNumberOfAmplitudes = maxNumberOfAmplitudes
         self.animationType = animationType
-        audioLevel.levelProvider = audioEngine.audioProcessing
+        audioLevel.levelProvider = audioProcessing
         setDisplayLink()
         amplitudes = [Double](repeating: 0.0, count: maxNumberOfAmplitudes)
     }
     
-    deinit {
+    func clean() {
         removeDisplayLink()
     }
     
     func playAudioPlayer() {
-        if !isAudioPlayerPlaying {
+        if !isPlaying {
+            isPlaying = true
             displayLink?.isPaused = false
-            audioEngine.audioPlayerPlay(true)
+            Task {
+                await audioEngine.scheduleBuffer()
+                audioEngine.playPlayers()
+            }
+
         }
     }
     
     func stopAudioPlayer() {
-        if isAudioPlayerPlaying {
+        if isPlaying {
+            isPlaying = false
             displayLink?.isPaused = true
-            audioEngine.audioPlayerPlay(false)
+            audioEngine.stopPlayers()
             stopAudioAnimation()
         }
     }
     
     func pauseAudioPlayer() {
-        if isAudioPlayerPlaying {
+        if isPlaying {
+            isPlaying = false
             displayLink?.isPaused = true
             audioEngine.pausePlayers()
             stopAudioAnimation()
         }
     }
     
-    func setAudioEngine(forURL url: URL, priority: TaskPriority = .userInitiated) async throws {
-        do {
-            try await audioEngine.setAudio(forURL: url, priority: priority)
+    func prepareAudioEngine(priority: TaskPriority = .userInitiated) async throws {
+            try await audioEngine.setBuffer(forURL: audioURL, priority: priority)
             
-            guard let _ = audioEngine.audioFormat else { return }
-
             audioEngine.setup()
+            await audioEngine.prepareBuffer()
             audioEngine.start()
-        }
-        catch {
-            throw error
-        }
     }
+    
+    public func processAudio() async {
+         guard let bufferStream = await audioEngine.getBuffer() else { return }
+
+         for await buffer in bufferStream {
+             if isPlaying {
+                 audioProcessing.process(buffer: buffer)
+             } else {
+                 audioProcessing.processSilence()
+             }
+         }
+     }
     
     // MARK: Display updates
 

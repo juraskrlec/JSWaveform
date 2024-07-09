@@ -58,6 +58,7 @@ public struct DraggableCircle: View {
     }
 }
 
+@MainActor
 public struct WaveformView: View {
         
     @State private var waveformViewModel: WaveformViewModel
@@ -68,6 +69,7 @@ public struct WaveformView: View {
     @State private var isDragging: Bool = false
     @State private var startDragPosition: Double = 0
     @State private var endDragPosition: Double = 0
+    @State private var isLoading: Bool = false
     
     private let configuration: Waveform.Configuration
     private let priority: TaskPriority
@@ -131,10 +133,7 @@ public struct WaveformView: View {
 
                 }
                 .onAppear {
-                    update(audioURL: waveformViewModel.audioURL)
-                }
-                .onChange(of: waveformViewModel.audioURL) { _, newValue in
-                    update(audioURL: newValue)
+                    update()
                 }
                 .onChange(of: waveformViewModel.audioProgress) { _, newValue in
                     animatePosition()
@@ -148,17 +147,15 @@ public struct WaveformView: View {
                 .tint(configuration.timeEffectButtonConfig.tintColor)
             }
         }
+        .onDisappear {
+            waveformViewModel.clean()
+        }
     }
     
-    /// USe this to update audio with different audio file.
-    public func updateAudio(forURL url: URL) {
-        waveformViewModel.audioURL = url
-    }
-    
-    private func update(audioURL url: URL) {
+    private func update() {
         Task(priority: priority) {
             do {
-                let samples = try await waveformViewModel.waveformSamples(forURL: url, downsampledTo: configuration.downsampleNumber, priority: priority)
+                let samples = try await waveformViewModel.loadSamples(downsampledTo: configuration.downsampleNumber)
                 await MainActor.run {
                     self.samples = samples
                     self.colors = Array(repeating: configuration.geometryConfig.primaryColor, count: samples.count)
@@ -186,21 +183,7 @@ public struct WaveformView: View {
     }
     
     private func handleDragEnded() {
-        let newPosition = Double(endDragPosition) * Double(waveformViewModel.audioLengthSamples)
-        let newTime = newPosition * waveformViewModel.audioLengthSeconds / Double(waveformViewModel.audioLengthSamples)
-        let doubleDownTime = floor(newTime)
-        var time: Double
-        if doubleDownTime.isZero {
-            time = -waveformViewModel.audioTime.elapsedTime
-        }
-        else if doubleDownTime.isLessThanOrEqualTo(waveformViewModel.audioTime.elapsedTime) {
-            time = -(waveformViewModel.audioTime.elapsedTime - doubleDownTime)
-        }
-        else {
-            time = doubleDownTime - waveformViewModel.audioTime.elapsedTime
-        }
-
-        waveformViewModel.seekEnd(to: time)
+        waveformViewModel.updateTime(for: Double(endDragPosition))
     }
     
     private func handleOnLongPressStarted() {

@@ -8,33 +8,90 @@
 import Foundation
 import AVFoundation
 import Observation
+import os
+
+private actor WaveformLoader {
+    let logger = Logger(subsystem: "JSWaveform.WafeformLoader", category: "ModelIO")
+    
+    enum WafevormError: Error {
+        case bufferRetrieveError
+        case audioFileNotFound
+    }
+    
+    func loadSamples(forURL url: URL) async throws -> [Float] {
+        logger.debug("Loading audio samples for URL: \(url)")
+        
+        let file = try? AVAudioFile(forReading: url)
+        guard let format = file?.processingFormat, let length = file?.length else {
+            throw WafevormError.audioFileNotFound
+        }
+        
+        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(length))
+        try? file?.read(into: buffer!)
+        
+        guard let floatChannelData = buffer?.floatChannelData else {
+            throw WafevormError.bufferRetrieveError
+        }
+        let channelData = floatChannelData.pointee
+        
+        let samples = stride(from: 0, to: Int(length), by: Int(format.channelCount)).map { channelData[$0] }
+        return samples
+    }
+    
+    func loadSamples(forURL url: URL, downsampledTo targetSampleCount: Int) async throws -> [Float] {
+        logger.debug("Loading audio samples for URL: \(url), downsampled: \(targetSampleCount)")
+        
+        let file = try? AVAudioFile(forReading: url)
+        guard let format = file?.processingFormat, let length = file?.length else { throw WafevormError.audioFileNotFound }
+        
+        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(length))
+        try? file?.read(into: buffer!)
+        
+        guard let floatChannelData = buffer?.floatChannelData else { throw WafevormError.bufferRetrieveError }
+        let channelData = floatChannelData.pointee
+        
+        let sampleCount = Int(length)
+        let samplesPerPixel = sampleCount / targetSampleCount
+        var downsampledData = [Float]()
+        
+        for i in 0..<targetSampleCount {
+            let start = i * samplesPerPixel
+            let end = min((i + 1) * samplesPerPixel, sampleCount)
+            let sampleRange = start..<end
+            
+            let maxSample = sampleRange.map { channelData[$0] }.max() ?? 0
+            downsampledData.append(maxSample)
+        }
+        
+        return downsampledData
+    }
+}
 
 @Observable
-class WaveformViewModel {
+@MainActor class WaveformViewModel {
     
     // -MARK: Public
     var audioTime: AudioTime = .zero
     var audioProgress: Double = 0
-    var isAudioPlayerPlaying: Bool {
-        return audioEngine.isAudioPlayerPlaying
-    }
     var activeSamplesCount: Int {
         return Int(audioProgress * Double(normalizedSamples.count))
     }
     var isPlaying: Bool = false
-    var normalizedSamples: [Float] = []
-
-    var audioURL: URL
+    
     var audioPlaybackIndex: Int = 0
     var currentAudioPlayback: Playback {
         return audioPlayblackRates[audioPlaybackIndex]
     }
+    var audioLengthSamples: AVAudioFramePosition = 0
     
     // -MARK: Private
-    private var audioEngine: AudioEngine = AudioEngine()
+    private let audioEngine: AudioEngine = AudioEngine()
     private var displayLink: CADisplayLink?
     private var needsFileScheduled = true
     private var wasPlaying = false
+    private var audioURL: URL
+    private var normalizedSamples: [Float] = []
+    private let logger = Logger(subsystem: "JSWaveform.WafeformViewModel", category: "ViewModel")
     
     private var audioFile: AVAudioFile? {
         do {
@@ -44,59 +101,40 @@ class WaveformViewModel {
             return nil
         }
     }
-        
-    var audioSampleRate: Double = 0
-    var audioLengthSeconds: Double = 0
+    
+    private var audioSampleRate: Double = 0
+    private var audioLengthSeconds: Double = 0
     
     private var seekFrame: AVAudioFramePosition = 0
     private var currentPosition: AVAudioFramePosition = 0
-    var audioLengthSamples: AVAudioFramePosition = 0
-    private var currentFrame: AVAudioFramePosition {
-      guard
-        let lastRenderTime = audioEngine.lastRenderTime,
-        let playerTime = audioEngine.playerTime(forNodeTime: lastRenderTime)
-      else {
-        return 0
-      }
-
-      return playerTime.sampleTime
-    }
+    private var currentFrame: AVAudioFramePosition = 0
     
-    let audioPlayblackRates: [Playback] = [
-      .init(value: 1, label: "1x"),
-      .init(value: 1.5, label: "1.5x"),
-      .init(value: 2, label: "2x")
+    private let waveformLoader = WaveformLoader()
+    
+    private let audioPlayblackRates: [Playback] = [
+        .init(value: 1, label: "1x"),
+        .init(value: 1.5, label: "1.5x"),
+        .init(value: 2, label: "2x")
     ]
-        
+    
     init(audioURL url: URL) {
         audioURL = url
         setupAudio()
         setDisplayLink()
     }
     
-    deinit {
+    func clean() {
         removeDisplayLink()
     }
     
-    func waveformSamples(forURL url: URL, priority: TaskPriority = .userInitiated) async throws -> [Float] {
-        do {
-            let samples = try await audioEngine.loadWaveform(from: url, priority: priority)
-            return normalizeWaveformData(samples)
-        }
-        catch {
-            throw error
-        }
+    func loadSamples() async throws -> [Float] {
+        return try await waveformLoader.loadSamples(forURL: audioURL)
     }
     
-    func waveformSamples(forURL url: URL, downsampledTo targetSampleCount: Int, priority: TaskPriority = .userInitiated) async throws -> [Float] {
-        do {
-            let samples = try await audioEngine.loadWaveform(from: url, downsampledTo: targetSampleCount, priority: priority)
-            normalizedSamples = normalizeWaveformData(samples)
-            return normalizedSamples
-        }
-        catch {
-            throw error
-        }
+    func loadSamples(downsampledTo: Int) async throws -> [Float] {
+        let samples = try await waveformLoader.loadSamples(forURL: audioURL, downsampledTo: downsampledTo)
+        normalizedSamples = normalizeWaveformData(samples)
+        return normalizedSamples
     }
     
     func setupAudio() {
@@ -113,47 +151,24 @@ class WaveformViewModel {
         audioEngine.setup()
         audioEngine.start()
         scheduleAudioFile()
-    }
-    
-    func playAudioPlayer() {
-        isPlaying = true
-        if !isAudioPlayerPlaying {
-            displayLink?.isPaused = false
-            if needsFileScheduled {
-              scheduleAudioFile()
-            }
-            audioEngine.playPlayers()
-        }
-    }
-    
-    func stopAudioPlayer() {
-        isPlaying = false
-        if isAudioPlayerPlaying {
-            displayLink?.isPaused = true
-            audioEngine.stopPlayers()
-        }
-    }
-    
-    func pauseAudioPlayer() {
-        isPlaying = false
-        if isAudioPlayerPlaying {
-            displayLink?.isPaused = true
-            audioEngine.pausePlayers()
-        }
+        logger.debug("Audio Engine started.")
     }
     
     func playOrPauseAudioPlayer() {
-        isPlaying.toggle()
-        if isAudioPlayerPlaying {
+        if isPlaying {
             displayLink?.isPaused = true
+            isPlaying = false
             audioEngine.pausePlayers()
+            logger.debug("Audio paused.")
         }
         else {
             displayLink?.isPaused = false
+            isPlaying = true
             if needsFileScheduled {
               scheduleAudioFile()
             }
             audioEngine.playPlayers()
+            logger.debug("Audio is playing.")
         }
     }
     
@@ -165,7 +180,9 @@ class WaveformViewModel {
         }
         audioPlaybackIndex = currentIndex
         let selectedRate = audioPlayblackRates[audioPlaybackIndex]
-        audioEngine.setAudioTimePitchRate(rate: Float(selectedRate.value))
+        Task {
+            await audioEngine.setAudioTimePitchRate(rate: Float(selectedRate.value))
+        }
     }
     
     func seekBegin() {
@@ -175,7 +192,24 @@ class WaveformViewModel {
         audioEngine.pausePlayers()
     }
     
-    func seekEnd(to time: Double) {
+    func updateTime(for position: Double) {
+        let newPosition = Double(position) * Double(audioLengthSamples)
+        let newTime = newPosition * audioLengthSeconds / Double(audioLengthSamples)
+        let doubleDownTime = floor(newTime)
+        let time: Double
+        if doubleDownTime.isZero {
+            time = -audioTime.elapsedTime
+        }
+        else if doubleDownTime.isLessThanOrEqualTo(audioTime.elapsedTime) {
+            time = -(audioTime.elapsedTime - doubleDownTime)
+        }
+        else {
+            time = doubleDownTime - audioTime.elapsedTime
+        }
+        seekEnd(to: time)
+    }
+    
+    private func seekEnd(to time: Double) {
         guard let audioFile = audioFile else {
             return
         }
@@ -193,10 +227,11 @@ class WaveformViewModel {
             needsFileScheduled = false
 
             let frameCount = AVAudioFrameCount(audioLengthSamples - seekFrame)
-            audioEngine.seekAudio(audioFile: audioFile, startingFrame: seekFrame, frameCount: frameCount) {
-                self.needsFileScheduled = true
+            Task {
+                await audioEngine.seekAudio(audioFile: audioFile, startingFrame: seekFrame, frameCount: frameCount)
+                needsFileScheduled = true
             }
-            
+
             if wasPlaying {
                 wasPlaying.toggle()
                 isPlaying = true
@@ -215,8 +250,9 @@ class WaveformViewModel {
         needsFileScheduled = false
         seekFrame = 0
       
-        audioEngine.scheduleFile(file: file) {
-            self.needsFileScheduled = true
+        Task {
+            await audioEngine.scheduleFile(file: file)
+            needsFileScheduled = true
         }
     }
     
@@ -239,24 +275,29 @@ class WaveformViewModel {
     }
     
     @objc private func update() {
-        currentPosition = currentFrame + seekFrame
-        currentPosition = max(currentPosition, 0)
-        currentPosition = min(currentPosition, audioLengthSamples)
+        Task {
+            let currentFrame = await audioEngine.currentFrame()
+            await MainActor.run {
+                currentPosition = currentFrame + seekFrame
+                currentPosition = max(currentPosition, 0)
+                currentPosition = min(currentPosition, audioLengthSamples)
 
-        if currentPosition >= audioLengthSamples {
-            audioEngine.stopPlayers()
-            seekFrame = 0
-            currentPosition = 0
-            
-            isPlaying = false
-            displayLink?.isPaused = true
+                if currentPosition >= audioLengthSamples {
+                    audioEngine.stopPlayers()
+                    seekFrame = 0
+                    currentPosition = 0
+                    
+                    isPlaying = false
+                    displayLink?.isPaused = true
+                }
+
+                audioProgress = Double(currentPosition) / Double(audioLengthSamples)
+
+                let time = Double(currentPosition) / audioSampleRate
+                audioTime = AudioTime(
+                  elapsedTime: time,
+                  audioLengthTime: audioLengthSeconds)
+            }
         }
-
-        audioProgress = Double(currentPosition) / Double(audioLengthSamples)
-
-        let time = Double(currentPosition) / audioSampleRate
-        audioTime = AudioTime(
-          elapsedTime: time,
-          audioLengthTime: audioLengthSeconds)
     }
 }
