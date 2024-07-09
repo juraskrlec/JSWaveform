@@ -24,19 +24,30 @@ public enum AudioVisualizer {
         case symetricMiddleLow
     }
     
+    public struct ShapeConfig: Equatable, Sendable {
+        public let isOneSide: Bool
+        
+        public init(isOneSide: Bool = false) {
+            self.isOneSide = isOneSide
+        }
+    }
+    
     public struct Configuration: Equatable, Sendable {
         
         public let style: Style
         public let animationType: AnimationType
         public let maxNumberOfAmplitudes: Int
+        public let shapeConfig: ShapeConfig
         
         public init(
             style: Style = .maskedGradient(.gray),
             animationType: AnimationType = .symetricMiddleHigh,
-            maxNumberOfAmplitudes: Int = 10) {
+            maxNumberOfAmplitudes: Int = 10,
+            shapeConfig: ShapeConfig = ShapeConfig()) {
             self.style = style
             self.animationType = animationType
             self.maxNumberOfAmplitudes = maxNumberOfAmplitudes
+            self.shapeConfig = shapeConfig
         }
     }
 }
