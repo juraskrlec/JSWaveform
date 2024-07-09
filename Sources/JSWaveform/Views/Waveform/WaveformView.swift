@@ -61,7 +61,7 @@ public struct DraggableCircle: View {
 @MainActor
 public struct WaveformView: View {
         
-    @State private var waveformViewModel: WaveformViewModel
+    @State private var waveformViewModel: WaveformModel
     @State private var samples: [Float] = []
     @State private var colors: [Color] = []
     @GestureState private var isDetectingLongPress = false
@@ -85,7 +85,7 @@ public struct WaveformView: View {
     public init(audioURL: URL,
                 configuration: Waveform.Configuration = Waveform.Configuration(),
                 priority: TaskPriority = .userInitiated) {
-        self.waveformViewModel = WaveformViewModel(audioURL: audioURL)
+        self.waveformViewModel = WaveformModel(audioURL: audioURL)
         self.configuration = configuration
         self.priority = priority
     }
