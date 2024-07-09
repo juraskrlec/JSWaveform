@@ -37,7 +37,8 @@ public struct AudioVisualizerView<Content: View>: View {
     
     public var body: some View {
         VStack {
-            content(AudioVisualizerShape(amplitudes: audioVisualizerViewModel.amplitudes))
+            content(AudioVisualizerShape(amplitudes: audioVisualizerViewModel.amplitudes, 
+                                         configuration: configuration.shapeConfig))
         }
         .onAppear {
             update(audioURL: audioVisualizerViewModel.audioURL)
