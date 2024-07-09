@@ -10,8 +10,8 @@ import AVFoundation
 import Observation
 import os
 
-private actor WaveformLoader {
-    let logger = Logger(subsystem: "JSWaveform.WafeformLoader", category: "ModelIO")
+private actor AudioPlayerLoader {
+    let logger = Logger(subsystem: "JSWaveform.AudioPlayerLoader", category: "ModelIO")
     
     enum WafevormError: Error {
         case bufferRetrieveError
@@ -68,7 +68,7 @@ private actor WaveformLoader {
 }
 
 @Observable
-@MainActor class WaveformModel {
+@MainActor class AudioPlayerModel {
     
     // -MARK: Public
     var audioTime: AudioTime = .zero
@@ -109,7 +109,7 @@ private actor WaveformLoader {
     private var currentPosition: AVAudioFramePosition = 0
     private var currentFrame: AVAudioFramePosition = 0
     
-    private let waveformLoader = WaveformLoader()
+    private let waveformLoader = AudioPlayerLoader()
     
     private let audioPlayblackRates: [Playback] = [
         .init(value: 1, label: "1x"),

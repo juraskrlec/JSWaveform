@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 
-public enum Waveform {
+public enum AudioPlayer {
     
     public struct Style: Equatable, Sendable {
         
