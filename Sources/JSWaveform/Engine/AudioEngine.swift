@@ -7,7 +7,6 @@
 
 import AVFoundation
 import Foundation
-import Observation
 
 actor AudioEngine {
     
@@ -17,7 +16,6 @@ actor AudioEngine {
     private var audioBuffer: AVAudioPCMBuffer?
     private var asyncBufferStream: AsyncStream<AVAudioPCMBuffer>?
     private var continuation: AsyncStream<AVAudioPCMBuffer>.Continuation?
-    private var audioFormat: AVAudioFormat?
     
     enum AudioEngineError: Error {
         case bufferRetrieveError
@@ -77,8 +75,6 @@ actor AudioEngine {
         try await Task(priority: priority) {
             guard let tempAudioBuffer = AudioEngine.getBuffer(fileURL: url) else { throw AudioEngineError.bufferRetrieveError }
             audioBuffer = tempAudioBuffer
-            guard let audioBuffer = audioBuffer else { throw AudioEngineError.bufferRetrieveError }
-            audioFormat = audioBuffer.format
         }.value
     }
 
