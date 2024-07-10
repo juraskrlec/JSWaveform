@@ -68,7 +68,7 @@ private actor AudioPlayerLoader {
 }
 
 @Observable
-@MainActor class AudioPlayerModel {
+@MainActor class AudioPlayerModel: JSModel {
     
     // -MARK: Public
     var audioTime: AudioTime = .zero
@@ -86,7 +86,6 @@ private actor AudioPlayerLoader {
     
     // -MARK: Private
     private let audioEngine: AudioEngine = AudioEngine()
-    private var displayLink: CADisplayLink?
     private var needsFileScheduled = true
     private var wasPlaying = false
     private var audioURL: URL
@@ -119,12 +118,8 @@ private actor AudioPlayerLoader {
     
     init(audioURL url: URL) {
         audioURL = url
+        super.init()
         setupAudio()
-        setDisplayLink()
-    }
-    
-    func clean() {
-        removeDisplayLink()
     }
     
     func loadSamples() async throws -> [Float] {
@@ -262,19 +257,8 @@ private actor AudioPlayerLoader {
     }
     
     // - MARK: Display link
-    fileprivate func setDisplayLink() {
-        displayLink = CADisplayLink(target: self, selector: #selector(update))
-        displayLink?.preferredFrameRateRange = CAFrameRateRange(minimum: 15, maximum: Float(JSScreen.maximumFramesPerSecond), __preferred: Float(JSScreen.maximumFramesPerSecond))
-        displayLink?.add(to: .current, forMode: .default)
-        displayLink?.isPaused = true
-    }
     
-    fileprivate func removeDisplayLink() {
-        displayLink?.invalidate()
-        displayLink = nil
-    }
-    
-    @objc private func update() {
+    override func update() {
         Task {
             let currentFrame = await audioEngine.currentFrame()
             await MainActor.run {
