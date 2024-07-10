@@ -10,7 +10,7 @@ import AVFoundation
 import Observation
 
 @Observable
-@MainActor class AudioVisualizerModel {
+@MainActor class AudioVisualizerModel: JSModel {
     
     // - MARK: Public
     var amplitudes: [Double] = []
@@ -19,7 +19,6 @@ import Observation
     var isPlaying: Bool = false
     
     // - MARK: Private
-    private var displayLink: CADisplayLink?
     private let audioEngine: AudioEngine = AudioEngine()
     private let audioProcessing = AudioProcessing()
     private var level: CGFloat = 0
@@ -41,12 +40,8 @@ import Observation
         self.maxNumberOfAmplitudes = maxNumberOfAmplitudes
         self.animationType = animationType
         audioLevel.levelProvider = audioProcessing
-        setDisplayLink()
         amplitudes = [Double](repeating: 0.0, count: maxNumberOfAmplitudes)
-    }
-    
-    func clean() {
-        removeDisplayLink()
+        super.init()
     }
     
     func playAudioPlayer() {
@@ -57,7 +52,6 @@ import Observation
                 await audioEngine.scheduleBuffer()
                 audioEngine.playPlayers()
             }
-
         }
     }
     
@@ -100,19 +94,7 @@ import Observation
      }
     
     // MARK: Display updates
-
-    private func setDisplayLink() {
-        displayLink = CADisplayLink(target: self, selector: #selector(updateWave))
-        displayLink?.preferredFrameRateRange = CAFrameRateRange(minimum: 15, maximum: Float(JSScreen.maximumFramesPerSecond), __preferred: Float(JSScreen.maximumFramesPerSecond))
-        displayLink?.add(to: .current, forMode: .common)
-    }
-    
-    private func removeDisplayLink() {
-        displayLink?.invalidate()
-        displayLink = nil
-    }
-    
-    @objc private func updateWave() {
+    override func update() {
         
         guard let levels = audioLevel.levelProvider?.levels else {
             return

@@ -81,5 +81,5 @@ You can read more about this at my site [juraskrlec.com](https://juraskrlec.com)
 ## Connect
 
 [Linkedin](https://www.linkedin.com/in/juraskrlec/)
-[Twitter/X](https://www.x.com/SkrlecJura)
 
+[Twitter/X](https://www.x.com/SkrlecJura)
