@@ -179,6 +179,12 @@ private actor AudioPlayerLoader {
         }
     }
     
+    func updateTimeWhileDrag(for position: Double) {
+        let newPosition = Double(position) * Double(audioLengthSamples)
+        let newTime = newPosition * audioLengthSeconds / Double(audioLengthSamples)
+        audioTime = AudioTime(elapsedTime: newTime, audioLengthTime: audioLengthSeconds)
+    }
+    
     func seekBegin() {
         displayLink?.isPaused = true
         wasPlaying = true
@@ -186,60 +192,31 @@ private actor AudioPlayerLoader {
         audioEngine.stopPlayers()
     }
     
-    func updateTime(for position: Double) {
-        let time = time(for: position)
-        seekEnd(to: time)
-    }
-    
-    private func time(for position: Double) -> Double {
+    func seekToPosition(_ position: Double) {
         let newPosition = Double(position) * Double(audioLengthSamples)
         let newTime = newPosition * audioLengthSeconds / Double(audioLengthSamples)
-        let doubleDownTime = round(1000 * newTime) / 1000
-        let time: Double
-        if doubleDownTime.isZero {
-            time = -audioTime.elapsedTime
-        }
-        else if doubleDownTime.isLessThanOrEqualTo(audioTime.elapsedTime) {
-            time = -(audioTime.elapsedTime - doubleDownTime)
-        }
-        else {
-            time = doubleDownTime - audioTime.elapsedTime
-        }
-        return time
-    }
-    
-    func updateTimeWhileDrag(for position: Double) {
-        audioTime = AudioTime(
-          elapsedTime: time(for: position),
-          audioLengthTime: audioLengthSeconds)
-    }
-    
-    private func seekEnd(to time: Double) {
-        guard let audioFile = audioFile else {
-            return
-        }
         
-        let offset = AVAudioFramePosition(time * audioSampleRate)
-        seekFrame = currentPosition + offset
-        seekFrame = max(seekFrame, 0)
-        seekFrame = min(seekFrame, audioLengthSamples)
+        // Update the seekFrame and currentPosition based on the new time
+        let offset = AVAudioFramePosition(newTime * audioSampleRate)
+        seekFrame = offset
         currentPosition = seekFrame
         
+        // Stop the players, update the audio engine and schedule the new segment
         audioEngine.stopPlayers()
-                
+        
         if currentPosition < audioLengthSamples {
-            update()
             needsFileScheduled = false
-            
             let frameCount = AVAudioFrameCount(audioLengthSamples - seekFrame)
+            
             Task {
-                logger.debug("Scheduling a segment for audio \(audioFile.url), seekFrame: \(self.seekFrame), frameCount: \(frameCount)")
-                await audioEngine.scheduleSegment(audioFile, startingFrame: currentPosition, frameCount: frameCount)
+                logger.debug("Scheduling a segment for audio \(self.audioFile!.url), seekFrame: \(self.seekFrame), frameCount: \(frameCount)")
+                await audioEngine.scheduleSegment(audioFile!, startingFrame: currentPosition, frameCount: frameCount)
                 await MainActor.run {
                     needsFileScheduled = true
                 }
             }
             
+            // If it was playing before, resume playback
             if wasPlaying {
                 wasPlaying = false
                 displayLink?.isPaused = false

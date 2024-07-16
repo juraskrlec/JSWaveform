@@ -193,10 +193,11 @@ public struct AudioPlayerView: View {
     }
     
     private func handleOnDragChanged(_ position: Double) {
+        audioPlayerModel.updateTimeWhileDrag(for: position)
     }
     
     private func handleDragEnded() {
-        audioPlayerModel.updateTime(for: Double(endDragPosition))
+        audioPlayerModel.seekToPosition(endDragPosition)
     }
     
     private func handleOnLongPressStarted() {
