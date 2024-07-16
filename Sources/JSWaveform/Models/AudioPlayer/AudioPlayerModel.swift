@@ -2,7 +2,7 @@
 //  WaveformViewModel.swift
 //
 //
-//  Created by Jura Skrlec on 23.06.2024..
+//  Created by Jura Skrlec on 23.06.2024.
 //
 
 import Foundation
@@ -90,7 +90,7 @@ private actor AudioPlayerLoader {
     private var wasPlaying = false
     private var audioURL: URL
     private var normalizedSamples: [Float] = []
-    private let logger = Logger(subsystem: "JSWaveform.WafeformViewModel", category: "ViewModel")
+    private let logger = Logger(subsystem: "JSWaveform.AudioPlayerModel", category: "Model")
     
     private var audioFile: AVAudioFile? {
         do {

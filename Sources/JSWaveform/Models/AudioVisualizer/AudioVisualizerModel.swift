@@ -8,6 +8,7 @@
 import Foundation
 import AVFoundation
 import Observation
+import os
 
 @Observable
 @MainActor class AudioVisualizerModel: JSModel {
@@ -25,6 +26,7 @@ import Observation
     private var peakLevel: CGFloat = 0
     private let audioLevel = AudioLevel()
     private var animationType: AudioVisualizer.AnimationType
+    private let logger = Logger(subsystem: "JSWaveform.AudioVisualizerModel", category: "Model")
 
     private var audioFile: AVAudioFile? {
         do {
@@ -167,6 +169,7 @@ import Observation
     
     // - MARK: Animations
     func stopAudioAnimation() {
+        logger.debug("Animation stopped.")
         amplitudes = [Double](repeating: 0.0, count: maxNumberOfAmplitudes)
     }
 
