@@ -10,7 +10,7 @@ import SwiftUI
 @MainActor
 public struct AudioVisualizerView<Content: View>: View {
     
-    @State private var audioVisualizerViewModel: AudioVisualizerModel
+    @State private var audioVisualizerModel: AudioVisualizerModel
     private let configuration: AudioVisualizer.Configuration
     private let priority: TaskPriority
     private let content: (AudioVisualizerShape) -> Content
@@ -30,31 +30,31 @@ public struct AudioVisualizerView<Content: View>: View {
         priority: TaskPriority = .userInitiated,
         @ViewBuilder content: @escaping (AudioVisualizerShape) -> Content) {
         self.configuration = configuration
-        self.audioVisualizerViewModel = AudioVisualizerModel(audioURL: audioURL, maxNumberOfAmplitudes: configuration.maxNumberOfAmplitudes, animationType: configuration.animationType)
+        self.audioVisualizerModel = AudioVisualizerModel(audioURL: audioURL, maxNumberOfAmplitudes: configuration.maxNumberOfAmplitudes, animationType: configuration.animationType)
         self.priority = priority
         self.content = content
     }
     
     public var body: some View {
         VStack {
-            content(AudioVisualizerShape(amplitudes: audioVisualizerViewModel.amplitudes, 
+            content(AudioVisualizerShape(amplitudes: audioVisualizerModel.amplitudes, 
                                          configuration: configuration.shapeConfig))
         }
         .onAppear {
-            update(audioURL: audioVisualizerViewModel.audioURL)
+            update(audioURL: audioVisualizerModel.audioURL)
         }
         .onDisappear {
-            audioVisualizerViewModel.clean()
+            audioVisualizerModel.clean()
         }
         .background(.clear)
-        .animation(.linear(duration: 0.1), value: audioVisualizerViewModel.amplitudes)
+        .animation(.linear(duration: 0.1), value: audioVisualizerModel.amplitudes)
     }
     
     private func update(audioURL url: URL) {
         Task(priority: priority) {
             do {
-                try await audioVisualizerViewModel.prepareAudioEngine(priority: priority)
-                await audioVisualizerViewModel.processAudio()
+                try await audioVisualizerModel.prepareAudioEngine(priority: priority)
+                await audioVisualizerModel.processAudio()
             }
             catch {
                 assertionFailure(error.localizedDescription)
@@ -64,22 +64,22 @@ public struct AudioVisualizerView<Content: View>: View {
     
     /// Use this to play file.
     public func playAudio() {
-        audioVisualizerViewModel.playAudioPlayer()
+        audioVisualizerModel.playAudioPlayer()
     }
     
     /// Use this to stop file.
     public func stopAudio() {
-        audioVisualizerViewModel.stopAudioPlayer()
+        audioVisualizerModel.stopAudioPlayer()
     }
     
     /// Use this to pause file.
     public func pauseAudio() {
-        audioVisualizerViewModel.pauseAudioPlayer()
+        audioVisualizerModel.pauseAudioPlayer()
     }
     
     /// Use this to update audio with different audio file.
     public func updateAudio(forURL url: URL) {
-        audioVisualizerViewModel.audioURL = url
+        audioVisualizerModel.audioURL = url
     }
 }
 

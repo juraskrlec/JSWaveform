@@ -90,20 +90,12 @@ actor AudioEngine {
         audioPlayer.play()
     }
         
-    func seekAudio(audioFile: AVAudioFile, startingFrame: AVAudioFramePosition, frameCount: AVAudioFrameCount) async {
-        await withCheckedContinuation { continuation in
-            audioPlayer.scheduleSegment(audioFile, startingFrame: startingFrame, frameCount: frameCount, at: nil) {
-                continuation.resume()
-            }
-        }
+    func scheduleSegment(_ file: AVAudioFile, startingFrame: AVAudioFramePosition, frameCount: AVAudioFrameCount) async {
+        await audioPlayer.scheduleSegment(file, startingFrame: startingFrame, frameCount: frameCount, at: nil)
     }
     
-    func scheduleFile(file: AVAudioFile) async {
-        await withCheckedContinuation { continuation in
-            audioPlayer.scheduleFile(file, at: nil) {
-                continuation.resume()
-            }
-        }
+    func scheduleFile(_ file: AVAudioFile) async {
+        await audioPlayer.scheduleFile(file, at: nil)
     }
     
     func setAudioTimePitchRate(rate: Float) {

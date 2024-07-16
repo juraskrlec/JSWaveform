@@ -12,13 +12,15 @@ public enum AudioPlayer {
     
     public struct Style: Equatable, Sendable {
         
-        public struct Images: Equatable, Sendable {
-            public let play: Image
-            public let pause: Image
+        public struct PlayButtonConfig: Equatable, Sendable {
+            public let playImage: Image
+            public let pauseImage: Image
+            public let width: CGFloat
             
-            public init(play: Image = Image.play, pause: Image = Image.pause) {
-                self.play = play
-                self.pause = pause
+            public init(playImage: Image = Image.play, pauseImage: Image = Image.pause, width: CGFloat = 40) {
+                self.playImage = playImage
+                self.pauseImage = pauseImage
+                self.width = width
             }
         }
         
@@ -50,15 +52,17 @@ public enum AudioPlayer {
         
         public struct TimeEffectButtonConfig: Equatable, Sendable {
             public let tintColor: Color
+            public let width: CGFloat
             
-            public init(tintColor: Color = .gray) {
+            public init(tintColor: Color = .gray, width: CGFloat = 40) {
                 self.tintColor = tintColor
+                self.width = width
             }
         }
     }
     
     public struct Configuration: Equatable, Sendable {
-        public let images: Style.Images
+        public let playButtonConfig: Style.PlayButtonConfig
         public let geometryConfig: Style.GeometryConfig
         public let draggableCircleConfig: Style.DragableCircleConfig
         public let timeEffectButtonConfig: Style.TimeEffectButtonConfig
@@ -68,16 +72,16 @@ public enum AudioPlayer {
         public let effectSpacerLength: CGFloat
         
         public init(
-            images: Style.Images = Style.Images(),
+            images: Style.PlayButtonConfig = Style.PlayButtonConfig(),
             geometryConfig: Style.GeometryConfig = Style.GeometryConfig(),
             draggableCircleConfig: Style.DragableCircleConfig = Style.DragableCircleConfig(),
             timeEffectButtonConfig: Style.TimeEffectButtonConfig = Style.TimeEffectButtonConfig(),
             backgroundColor: Color = .clear,
             downsampleNumber: Int = 20,
-            playSpacerLength: CGFloat = 32,
+            playSpacerLength: CGFloat = 16,
             effectSpacerLength: CGFloat = 16) {
                 
-                self.images = images
+                self.playButtonConfig = images
                 self.geometryConfig = geometryConfig
                 self.draggableCircleConfig = draggableCircleConfig
                 self.timeEffectButtonConfig = timeEffectButtonConfig

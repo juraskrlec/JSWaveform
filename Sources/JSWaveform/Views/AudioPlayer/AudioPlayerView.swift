@@ -19,6 +19,7 @@ public struct DraggableCircle: View {
     let height: CGFloat
     let color: Color
     var onDragStarted: () -> Void
+    var onDragChanged: (Double) -> Void
     var onDragEnded: () -> Void
     var onLongPressStarted: () -> Void
     var onLongPressEnded: () -> Void
@@ -49,10 +50,13 @@ public struct DraggableCircle: View {
     var dragGesture: some Gesture {
         DragGesture()
             .onChanged { value in
-                self.position = min(max(0, value.location.x / self.containerWidth), 1)
+                let newPosition = min(max(0, value.location.x / self.containerWidth), 1)
+                self.position = newPosition
+                self.onDragChanged(newPosition)
             }
             .onEnded({ value in
-                self.endPosition = min(max(0, value.location.x / self.containerWidth), 1)
+                let newPosition = min(max(0, value.location.x / self.containerWidth), 1)
+                self.endPosition = newPosition
                 self.onDragEnded()
             })
     }
@@ -61,7 +65,7 @@ public struct DraggableCircle: View {
 @MainActor
 public struct AudioPlayerView: View {
         
-    @State private var waveformViewModel: AudioPlayerModel
+    @State private var audioPlayerModel: AudioPlayerModel
     @State private var samples: [Float] = []
     @State private var colors: [Color] = []
     @GestureState private var isDetectingLongPress = false
@@ -85,7 +89,7 @@ public struct AudioPlayerView: View {
     public init(audioURL: URL,
                 configuration: AudioPlayer.Configuration = AudioPlayer.Configuration(),
                 priority: TaskPriority = .userInitiated) {
-        self.waveformViewModel = AudioPlayerModel(audioURL: audioURL)
+        self.audioPlayerModel = AudioPlayerModel(audioURL: audioURL)
         self.configuration = configuration
         self.priority = priority
     }
@@ -94,10 +98,11 @@ public struct AudioPlayerView: View {
         VStack {
             HStack(alignment: .center) {
                 Button(action: {
-                    waveformViewModel.playOrPauseAudioPlayer()
+                    audioPlayerModel.playOrPauseAudioPlayer()
                 }) {
-                    waveformViewModel.isPlaying ? configuration.images.pause.resizable().scaledToFit() : configuration.images.play.resizable().scaledToFit()
+                    audioPlayerModel.isPlaying ? configuration.playButtonConfig.pauseImage.resizable().scaledToFit() : configuration.playButtonConfig.playImage.resizable().scaledToFit()
                 }
+                .frame(width: configuration.playButtonConfig.width)
                 Spacer(minLength: configuration.playSpacerLength)
                 GeometryReader { geometry in
                     let totalSpacing = configuration.geometryConfig.spacing * CGFloat(samples.count - 1)
@@ -113,21 +118,22 @@ public struct AudioPlayerView: View {
                                         .frame(width: width, height: CGFloat(samples[index]) * height)
                                 }
                             }
-                            DraggableCircle(position: $waveformViewModel.audioProgress,
+                            DraggableCircle(position: $audioPlayerModel.audioProgress,
                                             endPosition: $endDragPosition,
                                             containerWidth: geometry.size.width,
                                             width: configuration.draggableCircleConfig.width,
                                             height: configuration.draggableCircleConfig.height,
                                             color: configuration.draggableCircleConfig.fillColor,
                                             onDragStarted: handleDragStarted,
+                                            onDragChanged: handleOnDragChanged,
                                             onDragEnded: handleDragEnded,
                                             onLongPressStarted: handleOnLongPressStarted,
                                             onLongPressEnded: handleOnLongPressEndeed)
                         }
                         HStack {
-                            Text(waveformViewModel.audioTime.elapsedText)
+                            Text(audioPlayerModel.audioTime.elapsedText)
                             Spacer()
-                            Text(waveformViewModel.audioTime.audioLengthText)
+                            Text(audioPlayerModel.audioTime.audioLengthText)
                         }
                     }
 
@@ -135,12 +141,15 @@ public struct AudioPlayerView: View {
                 .onAppear {
                     update()
                 }
-                .onChange(of: waveformViewModel.audioProgress) { _, newValue in
+                .onChange(of: audioPlayerModel.audioProgress) { _, newValue in
                     animatePosition()
                 }
                 Spacer(minLength: configuration.effectSpacerLength)
-                Button(waveformViewModel.currentAudioPlayback.label) {
-                    waveformViewModel.updateAudioPlayback()
+                Button {
+                    audioPlayerModel.updateAudioPlayback()
+                } label: {
+                    Text(audioPlayerModel.currentAudioPlayback.label)
+                        .frame(width: configuration.timeEffectButtonConfig.width)
                 }
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.capsule)
@@ -148,14 +157,15 @@ public struct AudioPlayerView: View {
             }
         }
         .onDisappear {
-            waveformViewModel.clean()
+            audioPlayerModel.clean()
         }
     }
     
     private func update() {
         Task(priority: priority) {
             do {
-                let samples = try await waveformViewModel.loadSamples(downsampledTo: configuration.downsampleNumber)
+                audioPlayerModel.configureAudioEngine()
+                let samples = try await audioPlayerModel.loadSamples(downsampledTo: configuration.downsampleNumber)
                 await MainActor.run {
                     self.samples = samples
                     self.colors = Array(repeating: configuration.geometryConfig.primaryColor, count: samples.count)
@@ -170,7 +180,7 @@ public struct AudioPlayerView: View {
     private func animatePosition() {
         withAnimation(.linear(duration: 0.1)) {
             for i in 0..<samples.count {
-                if i < waveformViewModel.activeSamplesCount {
+                if i < audioPlayerModel.activeSamplesCount {
                     colors[i] = configuration.geometryConfig.secondaryColor
                 } else {
                     colors[i] = configuration.geometryConfig.primaryColor
@@ -182,12 +192,15 @@ public struct AudioPlayerView: View {
     private func handleDragStarted() {
     }
     
+    private func handleOnDragChanged(_ position: Double) {
+    }
+    
     private func handleDragEnded() {
-        waveformViewModel.updateTime(for: Double(endDragPosition))
+        audioPlayerModel.updateTime(for: Double(endDragPosition))
     }
     
     private func handleOnLongPressStarted() {
-        waveformViewModel.seekBegin()
+        audioPlayerModel.seekBegin()
     }
     
     private func handleOnLongPressEndeed() {
