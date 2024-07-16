@@ -119,7 +119,6 @@ private actor AudioPlayerLoader {
     init(audioURL url: URL) {
         audioURL = url
         super.init()
-        setupAudio()
     }
     
     func loadSamples() async throws -> [Float] {
@@ -132,7 +131,7 @@ private actor AudioPlayerLoader {
         return normalizedSamples
     }
     
-    func setupAudio() {
+    public func configureAudioEngine() {
         guard let audioFile else {
             return
         }
@@ -154,15 +153,15 @@ private actor AudioPlayerLoader {
             displayLink?.isPaused = true
             isPlaying = false
             audioEngine.pausePlayers()
-            logger.debug("Audio paused.")
+            logger.debug("Audio is paused.")
         }
         else {
             displayLink?.isPaused = false
-            isPlaying = true
             if needsFileScheduled {
               scheduleAudioFile()
             }
             audioEngine.playPlayers()
+            isPlaying = true
             logger.debug("Audio is playing.")
         }
     }
@@ -184,13 +183,18 @@ private actor AudioPlayerLoader {
         displayLink?.isPaused = true
         wasPlaying = true
         isPlaying = false
-        audioEngine.pausePlayers()
+        audioEngine.stopPlayers()
     }
     
     func updateTime(for position: Double) {
+        let time = time(for: position)
+        seekEnd(to: time)
+    }
+    
+    private func time(for position: Double) -> Double {
         let newPosition = Double(position) * Double(audioLengthSamples)
         let newTime = newPosition * audioLengthSeconds / Double(audioLengthSamples)
-        let doubleDownTime = floor(newTime)
+        let doubleDownTime = round(1000 * newTime) / 1000
         let time: Double
         if doubleDownTime.isZero {
             time = -audioTime.elapsedTime
@@ -201,7 +205,13 @@ private actor AudioPlayerLoader {
         else {
             time = doubleDownTime - audioTime.elapsedTime
         }
-        seekEnd(to: time)
+        return time
+    }
+    
+    func updateTimeWhileDrag(for position: Double) {
+        audioTime = AudioTime(
+          elapsedTime: time(for: position),
+          audioLengthTime: audioLengthSeconds)
     }
     
     private func seekEnd(to time: Double) {
@@ -216,24 +226,26 @@ private actor AudioPlayerLoader {
         currentPosition = seekFrame
         
         audioEngine.stopPlayers()
-        
+                
         if currentPosition < audioLengthSamples {
             update()
             needsFileScheduled = false
-
+            
             let frameCount = AVAudioFrameCount(audioLengthSamples - seekFrame)
             Task {
-                await audioEngine.seekAudio(audioFile: audioFile, startingFrame: seekFrame, frameCount: frameCount)
-                needsFileScheduled = true
-            }
-
-            if wasPlaying {
-                wasPlaying.toggle()
-                isPlaying = true
-                displayLink?.isPaused = false
-                audioEngine.playPlayers()
+                logger.debug("Scheduling a segment for audio \(audioFile.url), seekFrame: \(self.seekFrame), frameCount: \(frameCount)")
+                await audioEngine.scheduleSegment(audioFile, startingFrame: currentPosition, frameCount: frameCount)
+                await MainActor.run {
+                    needsFileScheduled = true
+                }
             }
             
+            if wasPlaying {
+                wasPlaying = false
+                displayLink?.isPaused = false
+                audioEngine.playPlayers()
+                isPlaying = true
+            }
         }
     }
     
@@ -244,10 +256,12 @@ private actor AudioPlayerLoader {
 
         needsFileScheduled = false
         seekFrame = 0
-      
-        Task {
-            await audioEngine.scheduleFile(file: file)
-            needsFileScheduled = true
+              
+        Task(priority: .userInitiated) {
+            await audioEngine.scheduleFile(file)
+            await MainActor.run {
+                needsFileScheduled = true
+            }
         }
     }
     
