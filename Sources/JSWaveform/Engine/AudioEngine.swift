@@ -7,6 +7,7 @@
 
 import AVFoundation
 import Foundation
+import os
 
 actor AudioEngine {
     
@@ -16,6 +17,8 @@ actor AudioEngine {
     private var audioBuffer: AVAudioPCMBuffer?
     private var asyncBufferStream: AsyncStream<AVAudioPCMBuffer>?
     private var continuation: AsyncStream<AVAudioPCMBuffer>.Continuation?
+    
+    private let logger = Logger(subsystem: "JSWaveform.AudioEngine", category: "Engine")
     
     enum AudioEngineError: Error {
         case bufferRetrieveError
@@ -54,7 +57,7 @@ actor AudioEngine {
         do {
             try avAudioEngine.start()
         } catch {
-            print("Could not start audio engine: \(error)")
+            logger.error("Could not start audio engine: \(error)")
         }
     }
 
@@ -73,7 +76,7 @@ actor AudioEngine {
 
     func setBuffer(forURL url: URL, priority: TaskPriority = .userInitiated) async throws {
         try await Task(priority: priority) {
-            guard let tempAudioBuffer = AudioEngine.getBuffer(fileURL: url) else { throw AudioEngineError.bufferRetrieveError }
+            guard let tempAudioBuffer = getBuffer(fileURL: url) else { throw AudioEngineError.bufferRetrieveError }
             audioBuffer = tempAudioBuffer
         }.value
     }
@@ -107,12 +110,12 @@ actor AudioEngine {
         return playerTime.sampleTime
     }
     
-    private static func getBuffer(fileURL: URL) -> AVAudioPCMBuffer? {
+    private func getBuffer(fileURL: URL) -> AVAudioPCMBuffer? {
         let file: AVAudioFile!
         do {
             try file = AVAudioFile(forReading: fileURL)
         } catch {
-            print("Could not load file: \(error)")
+            logger.error("Could not load file: \(error)")
             return nil
         }
         file.framePosition = 0
@@ -125,7 +128,7 @@ actor AudioEngine {
         do {
             try file.read(into: buffer)
         } catch {
-            print("Could not load file into buffer: \(error)")
+            logger.error("Could not load file into buffer: \(error)")
             return nil
         }
         file.framePosition = 0
