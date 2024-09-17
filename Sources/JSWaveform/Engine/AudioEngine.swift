@@ -11,9 +11,9 @@ import os
 
 actor AudioEngine {
     
-    private let avAudioEngine = AVAudioEngine()
-    private let audioPlayer = AVAudioPlayerNode()
-    private let audioTimePitch = AVAudioUnitTimePitch()
+    private nonisolated let avAudioEngine = AVAudioEngine()
+    private nonisolated let audioPlayer = AVAudioPlayerNode()
+    private nonisolated let audioTimePitch = AVAudioUnitTimePitch()
     private var audioBuffer: AVAudioPCMBuffer?
     private var asyncBufferStream: AsyncStream<AVAudioPCMBuffer>?
     private var continuation: AsyncStream<AVAudioPCMBuffer>.Continuation?
